@@ -21,16 +21,42 @@ namespace XS_Utils {
 
 	void generate_tokens(const std::string& cmd, std::vector<std::string>& tokens) {
 		bool escape_next = false;
-		bool in_quote = false;
-		char quote_char = '\0';
+		bool in_quotes = false;
+		char quote_character = '\0';
 		std::string current{""};
-		for (const char& c : cmd) {
+		size_t line = 1, column = 0;
+		for (size_t i = 0; i < cmd.length(); ++i) {
+			const char c = cmd[i];
 			if (escape_next) {
 				current += c;
 				escape_next = false;
 				continue;
 			}
-
+			if (c == '\\') {
+				escape_next = true;
+				continue;
+			}
+			if ((c == '"' || c == '\'') && !in_quotes) {
+				in_quotes = true;
+				quote_character = c;
+				continue;
+			}
+			if (c == quote_character && in_quotes) {
+				in_quotes = false;
+				quote_character = '\0';
+				continue;
+			}
+			if (isspace(c) && !in_quotes) {
+				if (!current.empty()) {
+					tokens.push_back(current);
+					current.clear();
+				}
+			}
+			else current += c;
+		}
+		if (!current.empty()) {
+			tokens.push_back(current);
+			current.clear();
 		}
 	}
 }

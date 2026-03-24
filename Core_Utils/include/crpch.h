@@ -6,3 +6,8 @@
 #include <functional>
 #include <sstream>
 #include <concepts>
+#include <ctype.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <algorithm>
