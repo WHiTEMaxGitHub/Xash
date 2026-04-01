@@ -11,6 +11,7 @@ namespace XS_Utils {
 			: input(cmd), pos(0), line(1), column(1) {
 		}
 		Lexer& tokenize();
+		void printTokens() const;
 	private:
 		std::string input;
 		size_t pos;
@@ -19,7 +20,7 @@ namespace XS_Utils {
 		std::vector<Token> tokens;
 		char current() const;
 		void advance();
-		const char& peek() const;
+		char peek() const;
 		void handleVariable();
 		void handleWord();
 		void addToken(const TokenType& type, const std::string& value);

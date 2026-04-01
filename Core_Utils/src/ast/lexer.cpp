@@ -13,8 +13,8 @@ namespace XS_Utils {
 		++pos;
 		return;
 	}
-	const char& Lexer::peek() const {
-		return (pos + 1 >= input.size()) ? input[pos + 1] : '\0';
+	char Lexer::peek() const {
+		return (pos + 1 < input.size()) ? input[pos + 1] : '\0';
 	}
 	void Lexer::addToken(const TokenType& type, const std::string& value) {
 		tokens.emplace_back(type, value, line, column - value.length());
@@ -45,34 +45,38 @@ namespace XS_Utils {
 		}
 	}
 	void Lexer::handleWord() {
+		size_t start_line = line, start_column = column;
 		bool escape_next = false;
 		bool in_quotes = false;
 		char quote_character = '\0';
 		std::string current_word{ "" };
-		size_t line = 1, column = 0;
 		while (pos < input.length()) {
 			const char c = current();
 			if (escape_next) {
 				current_word += c;
 				escape_next = false;
+				advance();
 				continue;
 			}
 			if (c == '\\') {
 				escape_next = true;
+				advance();
 				continue;
 			}
 			if ((c == '"' || c == '\'') && !in_quotes) {
 				in_quotes = true;
 				quote_character = c;
+				advance();
 				continue;
 			}
 			if (c == quote_character && in_quotes) {
 				in_quotes = false;
 				quote_character = '\0';
+				advance();
 				continue;
 			}
-			if (!in_quotes && 
-				(isspace(c) || c == '|' || c == '&' || c == '<' || 
+			if (!in_quotes &&
+				(isspace(c) || c == '|' || c == '&' || c == '<' ||
 					c == '>' || c == '$' || c == ';')) {
 				break;
 			}
@@ -80,13 +84,26 @@ namespace XS_Utils {
 			advance();
 		}
 		TokenType type = TokenType::WORD_ARGUMENT;
-		if (tokens.empty()) {
+		if (!tokens.empty()) {
 			auto tID = static_cast<int>(tokens.back().type);
 			if (tID >= 4 && tID <= 8) {
 				type = TokenType::WORD_COMMMAND;
 			}
+			else if (!in_quotes && (current_word.find('*') != std::string::npos || current_word.find('?') != std::string::npos)) {
+				type = TokenType::SPECIAL_WILDCARD;
+			}
+			else if (current_word.length() >= 2) {
+				if (current_word[0] == '-') {
+					if (current_word[1] == '-') {
+						type = TokenType::WORD_OPTION_LONG;
+					}
+					else type = TokenType::WORD_OPTION;
+				}
+			}
 		}
 		else type = TokenType::WORD_COMMMAND;
+
+		tokens.emplace_back(type, current_word, start_line, start_column);
 	}
 	Lexer& Lexer::tokenize() {
 		tokens.clear();
@@ -138,6 +155,12 @@ namespace XS_Utils {
 			}
 			//¥¶¿Ìµ•¥ WORD
 			handleWord();
+		}
+		return *this;
+	}
+	void Lexer::printTokens() const {
+		for (const auto& t : tokens) {
+			std::cout << t << '\n';
 		}
 	}
 }

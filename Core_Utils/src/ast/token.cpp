@@ -3,7 +3,8 @@
 
 namespace XS_Utils {
 	std::ostream& operator<<(std::ostream& os, Token t) {
-		os << "Token: { " << t.getTypeName() << ", " << t.value << ", line: " << t.line << ", column: " << t.column << std::endl;
+		os << "Token: { " << t.getTypeName() << ", " << t.value << ", line: " << t.line << ", column: " << t.column << " }";
+		return os;
 	}
 	std::string Token::getTypeName() const {
 		static const char* names[] = {
