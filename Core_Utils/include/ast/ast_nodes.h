@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <optional>
 
 namespace XS_Utils {
 	enum class ASTNodeType {
@@ -15,7 +16,8 @@ namespace XS_Utils {
 		SEQUENCE,					//;
 		BACKGROUND,					//&
 		SUBSHELL,					//×Óshell()
-		COMMAND_SUBST				//ÃüÁîÌæ»»$()
+		COMMAND_SUBST,				//ÃüÁîÌæ»»$()
+		VARIABLE					//±äÁ¿
 	};
 
 	class ASTNode {
@@ -88,16 +90,143 @@ namespace XS_Utils {
 		
 		void debug_print(int indent = 0) const override;
 
-		inline PipeNode& addSender(ASTNode* nodeptr) {
-			sender = std::unique_ptr<ASTNode>{ nodeptr };
+		inline PipeNode& setSender(std::unique_ptr<ASTNode> nodeptr) {
+			sender = std::move(nodeptr);
 			return *this;
 		}
-		inline PipeNode& addReceiver(ASTNode* nodeptr) {
-			receiver = std::unique_ptr<ASTNode>{ nodeptr };
+		inline PipeNode& setReceiver(std::unique_ptr<ASTNode> nodeptr) {
+			receiver = std::move(nodeptr);
 			return *this;
 		}
 	private:
 		std::unique_ptr<ASTNode> sender;
 		std::unique_ptr<ASTNode> receiver;
+	};
+
+	// RedirectNode
+	class RedirectNode : public ASTNode {
+	private:
+		enum class RedirectType {
+			INPUT,
+			OUTPUT,
+			APPEND,
+			HEREDOC
+		};
+	public:
+		RedirectNode(): redirect_type(RedirectType::APPEND) {}
+
+		inline ASTNodeType type() const override {
+			return ASTNodeType::REDIRECT;
+		}
+		std::string toString() const override;
+		void debug_print(int indent = 0) const override;
+
+		inline RedirectNode& setCommand(std::unique_ptr<ASTNode> nodeptr) {
+			command = std::move(nodeptr);
+			return *this;
+		}
+		inline RedirectNode& setFile(const std::string& _file) {
+			file = _file;
+			return *this;
+		}
+		inline RedirectNode& setRedirectType(const std::string& symbol) {
+			if (symbol == "<") redirect_type = RedirectType::INPUT;
+			if (symbol == ">") redirect_type = RedirectType::OUTPUT;
+			if (symbol == "<<") redirect_type = RedirectType::APPEND;
+			if (symbol == ">>") redirect_type = RedirectType::HEREDOC;
+			return *this;
+		}
+	private:
+		std::unique_ptr<ASTNode> command;
+		std::string file;
+		RedirectType redirect_type;
+		std::string getRedirectSymbol() const;
+		std::string getRedirectTypeName() const;
+	};
+
+	class AndOrNode : public ASTNode {
+	private:
+		enum class AndOrType {
+			AND,
+			OR,
+			NOT
+		};
+	public:
+		std::string getSymbol() const;
+		std::string getTypeName() const;
+		inline ASTNodeType type() const override {
+			return ASTNodeType::AND_OR;
+		}
+		std::string toString() const override;
+		void debug_print(int indent = 0) const override;
+	private:
+		AndOrType andor_type;
+		std::optional<std::unique_ptr<ASTNode>> left;
+		std::unique_ptr<ASTNode> right;
+	};
+
+	class BackgroundNode : public ASTNode {
+	private:
+		std::unique_ptr<ASTNode> command;
+	public:
+		BackgroundNode() = default;
+		inline ASTNodeType type() const override {
+			return ASTNodeType::BACKGROUND;
+		}
+		std::string toString() const override;
+		void debug_print(int indent = 0) const override;
+		inline BackgroundNode& setCommand(std::unique_ptr<ASTNode> nodeptr) {
+			command = std::move(nodeptr);
+			return *this;
+		}
+	};
+
+	class SubshellNode : public ASTNode {
+	public:
+		SubshellNode() = default;
+		SubshellNode(std::unique_ptr<ASTNode> nodeptr): command(std::move(nodeptr)) {}
+		inline SubshellNode& setCommand(std::unique_ptr<ASTNode> nodeptr) {
+			command = std::move(nodeptr);
+			return *this;
+		}
+		inline ASTNodeType type() const override {
+			return ASTNodeType::SUBSHELL;
+		}
+		std::string toString() const override;
+		void debug_print(int indent = 0) const override;
+	private:
+		std::unique_ptr<ASTNode> command;
+	};
+
+	class CommandListNode : public ASTNode {
+	public:
+		CommandListNode() = default;
+		inline CommandListNode& addCommand(std::unique_ptr<ASTNode> nodeptr) {
+			commands.push_back(std::move(nodeptr));
+			return *this;
+		}
+		inline ASTNodeType type() const override {
+			return ASTNodeType::SEQUENCE;
+		}
+		std::string toString() const override;
+		void debug_print(int indent = 0) const override;
+	private:
+		std::vector<std::unique_ptr<ASTNode>> commands;
+	};
+
+	class CommandSubstNode : public ASTNode {
+	public:
+		CommandSubstNode() = default;
+		inline CommandSubstNode& setCommand(std::unique_ptr<ASTNode> nodeptr) {
+			command = std::move(nodeptr);
+			return *this;
+		}
+		inline ASTNodeType type() const override {
+			return ASTNodeType::COMMAND_SUBST;
+		}
+		std::string toString() const override;
+		void debug_print(int indent = 0) const override;
+	private:
+		std::unique_ptr<ASTNode> command;
 	};
 }
